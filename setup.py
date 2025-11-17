@@ -18,6 +18,8 @@ from pathlib import Path
 
 from setuptools import find_packages, setup
 
+
+pass
 version_folder = os.path.dirname(os.path.join(os.path.abspath(__file__)))
 
 with open(os.path.join(version_folder, "verl/version/version")) as f:
