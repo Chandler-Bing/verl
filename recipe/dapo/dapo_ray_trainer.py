@@ -216,7 +216,15 @@ class RayDAPOTrainer(RayPPOTrainer):
                         # we combine with rule-based rm
                         reward_tensor, reward_extra_infos_dict = compute_reward(new_batch, self.reward_fn,step = self.global_steps,config = self.config)
 
-                        new_batch.batch["token_level_scores"] = reward_tensor
+                        #new_batch.batch["token_level_scores"] = reward_tensor
+                        if type(reward_tensor) is dict:
+                            # if reward_tensor is a dict, we assume it's a dict of tensors
+                            # and we just update the batch with it
+                            for k, v in reward_tensor.items():
+                                new_batch.batch[k] = v
+                            new_batch.batch["token_level_scores"] = reward_tensor['total_reward']
+                        else:
+                            new_batch.batch["token_level_scores"] = reward_tensor
 
                         if reward_extra_infos_dict:
                             new_batch.non_tensor_batch.update(
