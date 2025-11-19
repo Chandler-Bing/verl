@@ -274,6 +274,7 @@ class RayDAPOTrainer(RayPPOTrainer):
                             if std > 0 or len(prompt_uid2metric_vals[uid]) == 1
                         ]
                         num_prompt_in_batch += len(kept_prompt_uids)
+                        print(f'{len(kept_prompt_uids)=},{kept_prompt_uids[:32]=},{num_prompt_in_batch=}')
 
                         kept_traj_idxs = []
                         for idx, traj_from_prompt_uid in enumerate(new_batch.non_tensor_batch["uid"]):
@@ -290,6 +291,7 @@ class RayDAPOTrainer(RayPPOTrainer):
                             print('NOTE!!! recomputing reward after filtering for rank reward...')
                             i = 0
                             needed_num = (self.config.data.train_batch_size - num_prompt_in_batch)* self.config.actor_rollout_ref.rollout.n
+                            print(f'{num_prompt_in_batch=},{needed_num}=,{i=},{len(kept_traj_idxs)=}')
                             while num_prompt_in_batch < self.config.data.train_batch_size and needed_num < len(kept_traj_idxs) and i < len(kept_traj_idxs):
                                 print(f'{num_prompt_in_batch=},{needed_num=},{i=}')
                                 tmp_batch = new_batch[i:i+needed_num]
@@ -341,6 +343,7 @@ class RayDAPOTrainer(RayPPOTrainer):
                                     for uid, std in prompt_uid2metric_std.items()
                                     if std > 0 or len(prompt_uid2metric_vals[uid]) == 1
                                 ]
+                                print(f'{kept_prompt_uids=},{i=}')
                                 #num_prompt_in_batch += len(kept_prompt_uids)
 
                                 kept_traj_idxs = []
@@ -353,6 +356,8 @@ class RayDAPOTrainer(RayPPOTrainer):
                                 i += needed_num
                                 num_prompt_in_batch = len(kept_prompt_uids)
                                 needed_num = (self.config.data.train_batch_size - num_prompt_in_batch) * self.config.actor_rollout_ref.rollout.n
+                                if needed_num <=0:
+                                    break
 
                                 ####### basicly, copy from above ########
 

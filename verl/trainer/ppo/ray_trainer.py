@@ -246,8 +246,8 @@ def compute_advantage(
             )
             advs.append(advantages)
             rtns.append(returns)
-        advantages = sum(advs[0]) / len(advs)
-        returns =  sum(rtns[0]) / len(rtns)
+        advantages = sum(advs) / len(advs)
+        returns =  sum(rtns) / len(rtns)
         data.batch["advantages"] = advantages
         data.batch["returns"] = returns
         # advantages, returns = core_algos.compute_grpo_outcome_advantage(
