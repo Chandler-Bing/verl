@@ -17,7 +17,7 @@
 PPO Trainer with Ray-based single controller.
 This trainer supports model-agonistic model initialization with huggingface
 """
-
+import decimal
 import json
 import os
 import uuid
@@ -59,6 +59,7 @@ from verl.utils.rollout_skip import RolloutSkip
 from verl.utils.seqlen_balancing import calculate_workload, get_seqlen_balanced_partitions, log_seqlen_unbalance
 from verl.utils.torch_functional import masked_mean
 from verl.utils.tracking import ValidationGenerationsLogger
+from sklearn.metrics import roc_auc_score
 
 
 @dataclass
@@ -231,14 +232,32 @@ def compute_advantage(
         grpo_calculation_mask = data.batch["response_mask"]
 
         # Call compute_grpo_outcome_advantage with parameters matching its definition
-        advantages, returns = core_algos.compute_grpo_outcome_advantage(
-            token_level_rewards=data.batch["token_level_rewards"],
-            response_mask=grpo_calculation_mask,
-            index=data.non_tensor_batch["uid"],
-            norm_adv_by_std_in_grpo=norm_adv_by_std_in_grpo,
-        )
+        advs, rtns = [], []
+        multi_rewards = ["reward_xgb", "reward_mob3d30"]
+        # multi_rewards = ['reward_rank', ]
+        print(f'cal advantage using multiple rewards:{multi_rewards}')
+        for k in multi_rewards:
+            advantages, returns = core_algos.compute_grpo_outcome_advantage(
+                # token_level_rewards=data.batch["token_level_rewards"],
+                token_level_rewards=data.batch[k],
+                response_mask=grpo_calculation_mask,
+                index=data.non_tensor_batch["uid"],
+                norm_adv_by_std_in_grpo=norm_adv_by_std_in_grpo,
+            )
+            advs.append(advantages)
+            rtns.append(returns)
+        advantages = 1 * advs[0]
+        returns = 1 * rtns[0]
         data.batch["advantages"] = advantages
         data.batch["returns"] = returns
+        # advantages, returns = core_algos.compute_grpo_outcome_advantage(
+        #     token_level_rewards=data.batch["token_level_rewards"],
+        #     response_mask=grpo_calculation_mask,
+        #     index=data.non_tensor_batch["uid"],
+        #     norm_adv_by_std_in_grpo=norm_adv_by_std_in_grpo,
+        # )
+        # data.batch["advantages"] = advantages
+        # data.batch["returns"] = returns
     else:
         # handle all other adv estimator type other than GAE and GRPO
         adv_estimator_fn = core_algos.get_adv_estimator_fn(adv_estimator)
@@ -311,6 +330,8 @@ class RayPPOTrainer:
         self.config = config
         self.reward_fn = reward_fn
         self.val_reward_fn = val_reward_fn
+        self.best_performance = 0
+        self.should_save_because_is_best = False
 
         self.hybrid_engine = config.actor_rollout_ref.hybrid_engine
         assert self.hybrid_engine, "Currently, only support hybrid engine"
@@ -537,6 +558,9 @@ class RayPPOTrainer:
         sample_scores = []
         sample_turns = []
         sample_uids = []
+        y_truess = []
+        y_predss = []
+        promptss, responsess, extra_infoss, detailss = [], [], [], []
 
         for test_data in self.val_dataloader:
             test_batch = DataProto.from_single_dict(test_data)
@@ -606,8 +630,22 @@ class RayPPOTrainer:
             # evaluate using reward_function
             if self.val_reward_fn is None:
                 raise ValueError("val_reward_fn must be provided for validation.")
-            result = self.val_reward_fn(test_batch, return_dict=True)
-            reward_tensor = result["reward_tensor"]
+            #result = self.val_reward_fn(test_batch, return_dict=True)
+            #reward_tensor = result["reward_tensor"]
+
+            prompts, responses, extra_infos, details, y_trues, y_preds, result = self.val_reward_fn(test_batch,
+                                                                                                    return_dict=True,
+                                                                                                    val=True,
+                                                                                                    config=self.config)
+            y_truess.extend(y_trues)
+            y_predss.extend(y_preds)
+            promptss.extend(prompts)
+            responsess.extend(responses)
+            extra_infoss.extend(extra_infos)
+            detailss.extend(details)
+
+            all_reward = result["reward_tensor"]
+            reward_tensor = all_reward['total_reward']
             scores = reward_tensor.sum(-1).cpu().tolist()
             sample_scores.extend(scores)
 
@@ -621,6 +659,34 @@ class RayPPOTrainer:
                 sample_turns.append(test_batch.non_tensor_batch["__num_turns__"])
 
             data_source_lst.append(test_batch.non_tensor_batch.get("data_source", ["unknown"] * reward_tensor.shape[0]))
+
+        assert len(y_predss) == len(y_truess), f"{len(y_predss)=}, {len(y_truess)=},not equal!!!!"
+        print(f'{len(y_predss)=}, {len(y_truess)=}')
+        auc = roc_auc_score(y_score=y_predss, y_true=y_truess)
+        if auc > self.best_performance:
+            self.best_performance = auc
+            self.should_save_because_is_best = True
+        reward_extra_infos_dict['auc'] = [auc] * len(sample_scores)
+        print(f"{self.global_steps=} validation auc: {auc}")
+
+        val_txt_path = f'/data/oceanus_share/boruipeng/github/risk-val-logs/{self.config.trainer.experiment_name}/step_{self.global_steps}.txt'
+        print(f'saving validation results to {val_txt_path}')
+        os.makedirs(os.path.dirname(val_txt_path), exist_ok=True)
+        with open(val_txt_path, 'w', encoding='utf-8') as f:
+            for p, r, e, d in zip(promptss, responsess, extra_infoss, detailss):
+                e = dict(e)
+                for k, v in e.items():
+                    if type(v) is decimal.Decimal:
+                        # print(f'befor,{type(v)}')
+                        v = float(v)
+                        # print(f'after,{type(v)}')
+                        e[k] = v
+                f.write(json.dumps({'prompt': p, 'response': r, 'extra_info': e, "details": d}, ensure_ascii=False))
+                f.write('\n')
+            # for p,r,e,d in zip(promptss,responsess,extra_infoss,detailss):
+            #     f.write(json.dumps({'prompt':p,'response':r,'extra_info':e,'detail':d},ensure_ascii=False))
+            #     f.write('\n')
+        print(f'saving done....')
 
         self._maybe_log_val_generations(inputs=sample_inputs, outputs=sample_outputs, scores=sample_scores)
 
@@ -774,7 +840,7 @@ class RayPPOTrainer:
                 config=self.config, worker_group=self.actor_rollout_wg, rm_wg=self.rm_wg
             )
 
-    def _save_checkpoint(self):
+    def _save_checkpoint(self,is_best = False):
         from verl.utils.fs import local_mkdir_safe
 
         # path: given_path + `/global_step_{global_steps}` + `/actor`
@@ -805,7 +871,7 @@ class RayPPOTrainer:
         )
 
         self.actor_rollout_wg.save_checkpoint(
-            actor_local_path, actor_remote_path, self.global_steps, max_ckpt_to_keep=max_actor_ckpt_to_keep
+            actor_local_path, actor_remote_path, self.global_steps, max_ckpt_to_keep=max_actor_ckpt_to_keep,is_best = is_best
         )
 
         if self.use_critic:

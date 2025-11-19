@@ -94,6 +94,7 @@ class FSDPCheckpointManager(BaseCheckpointManager):
             processing_class=processing_class,
             checkpoint_config=checkpoint_config,
         )
+        self.previous_best_saved_paths = []
 
     def load_checkpoint(self, local_path: str, hdfs_path: str = None, del_local_after_load=False):
         """
@@ -177,7 +178,7 @@ class FSDPCheckpointManager(BaseCheckpointManager):
         # wait for everyone to load checkpoints
         torch.distributed.barrier()
 
-    def save_checkpoint(self, local_path: str, hdfs_path: str = None, global_step: int = 0, max_ckpt_to_keep=None):
+    def save_checkpoint(self, local_path: str, hdfs_path: str = None, global_step: int = 0, max_ckpt_to_keep=None,is_best = False):
         """
         Save an FSDP checkpoint for this rank.
 
@@ -212,6 +213,11 @@ class FSDPCheckpointManager(BaseCheckpointManager):
             keep_start = len(self.previous_saved_paths) - max_ckpt_to_keep + 1
             self.remove_previous_save_local_path(self.previous_saved_paths[:keep_start])
             self.previous_saved_paths = self.previous_saved_paths[keep_start:]
+
+        if is_best:
+            if self.rank == 0 and len(self.previous_best_saved_paths) >= 1:
+                self.remove_previous_save_local_path(self.previous_best_saved_paths[0])
+                self.previous_best_saved_paths = []
 
         local_path = local_mkdir_safe(local_path)
         torch.distributed.barrier()
@@ -364,4 +370,8 @@ class FSDPCheckpointManager(BaseCheckpointManager):
             # wait for rank0 to dump hf_model to local
             torch.distributed.barrier()
 
-        self.previous_saved_paths.append(local_path)
+        #self.previous_saved_paths.append(local_path)
+        if is_best:
+            self.previous_best_saved_paths.append(local_path)
+        else:
+            self.previous_saved_paths.append(local_path)

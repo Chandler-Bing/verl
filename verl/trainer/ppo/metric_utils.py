@@ -157,14 +157,14 @@ def compute_data_metrics(batch: DataProto, use_critic: bool = True) -> dict[str,
         raise ValueError("All samples are aborted, this should not happen.")
 
     metrics = {
-        # score
-        "critic/score/mean": score_mean,
-        "critic/score/max": score_max,
-        "critic/score/min": score_min,
-        # reward
-        "critic/rewards/mean": reward_mean,
-        "critic/rewards/max": reward_max,
-        "critic/rewards/min": reward_min,
+        # # score
+        # "critic/score/mean": score_mean,
+        # "critic/score/max": score_max,
+        # "critic/score/min": score_min,
+        # # reward
+        # "critic/rewards/mean": reward_mean,
+        # "critic/rewards/max": reward_max,
+        # "critic/rewards/min": reward_min,
         # adv
         "critic/advantages/mean": torch.mean(valid_adv).detach().item(),
         "critic/advantages/max": torch.max(valid_adv).detach().item(),
@@ -207,6 +207,14 @@ def compute_data_metrics(batch: DataProto, use_critic: bool = True) -> dict[str,
         "prompt_length/min": torch.min(prompt_length).detach().item(),
         "prompt_length/clip_ratio": torch.mean(torch.eq(prompt_length, max_prompt_length).float()).detach().item(),
     }
+    tmp_metrics = {"rewards/mean": {}, "rewards/max": {}, "rewards/min": {}}
+    # for k in ["total_reward","reward_ce","reward_brier","reward_xgb_bin","reward_rank","reward_explore"]:
+    for k in ["total_reward", "reward_xgb", "reward_mob3d30"]:
+        sequence_reward = batch.batch[k].sum(-1)
+        tmp_metrics['rewards/mean'][k] = torch.mean(sequence_reward).detach().item()
+        tmp_metrics['rewards/max'][k] = torch.max(sequence_reward).detach().item()
+        tmp_metrics['rewards/min'][k] = torch.min(sequence_reward).detach().item()
+    metrics.update(tmp_metrics)
 
     # multi-turn conversation
     if "__num_turns__" in batch.non_tensor_batch:
@@ -436,7 +444,8 @@ def process_validation_metrics(
     for data_source, uid2var2vals in data_src2uid2var2vals.items():
         for uid, var2vals in uid2var2vals.items():
             for var_name, var_vals in var2vals.items():
-                if isinstance(var_vals[0], str):
+                #if isinstance(var_vals[0], str):
+                if '' in var_vals or type(var_vals[0]) is dict:
                     continue
 
                 metric = {}

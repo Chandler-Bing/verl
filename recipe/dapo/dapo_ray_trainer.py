@@ -214,7 +214,7 @@ class RayDAPOTrainer(RayPPOTrainer):
                             new_batch = new_batch.union(reward_tensor)
 
                         # we combine with rule-based rm
-                        reward_tensor, reward_extra_infos_dict = compute_reward(new_batch, self.reward_fn)
+                        reward_tensor, reward_extra_infos_dict = compute_reward(new_batch, self.reward_fn,step = self.global_steps,config = self.config)
 
                         new_batch.batch["token_level_scores"] = reward_tensor
 
@@ -373,7 +373,12 @@ class RayDAPOTrainer(RayPPOTrainer):
                     is_last_step or self.global_steps % self.config.trainer.save_freq == 0
                 ):
                     with marked_timer("save_checkpoint", timing_raw, "green"):
-                        self._save_checkpoint()
+                        #self._save_checkpoint()
+                        if self.should_save_because_is_best:
+                            self._save_checkpoint(is_best=True)
+                            self.should_save_because_is_best = False
+                        else:
+                            self._save_checkpoint()
 
                 with marked_timer("stop_profile", timing_raw):
                     next_step_profile = (

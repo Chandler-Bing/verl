@@ -24,6 +24,8 @@ def default_compute_score(
     sandbox_fusion_url=None,
     concurrent_semaphore=None,
     memory_limit_mb=None,
+    rank_reward = None,
+    cur_step = 0,
     **kwargs,
 ):
     """Compute the score for a given solution based on the data source.
@@ -103,6 +105,9 @@ def default_compute_score(
 
         res = search_r1_like_qa_em.compute_score(solution_str, ground_truth)
 
+    elif data_source == 'risk_dapo':
+        from . import risk_dapo
+        res = risk_dapo.compute_score(solution_str, ground_truth,extra_info = extra_info ,rank_reward=rank_reward,cur_step=cur_step)
     else:
         raise NotImplementedError(f"Reward function is not implemented for {data_source=}")
 
