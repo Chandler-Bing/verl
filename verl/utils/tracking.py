@@ -258,8 +258,16 @@ class _TensorboardAdapter:
         self.writer = SummaryWriter(tensorboard_dir)
 
     def log(self, data, step):
-        for key in data:
-            self.writer.add_scalar(key, data[key], step)
+        # for key in data:
+        #     self.writer.add_scalar(key, data[key], step)
+        for k, v in data.items():
+            if isinstance(v, (int, float)):
+                self.writer.add_scalar(k, v, step)
+            elif isinstance(v, dict):
+                self.writer.add_scalars(k, v, step)
+            else:
+                pass
+        self.writer.flush()
 
     def finish(self):
         self.writer.close()
