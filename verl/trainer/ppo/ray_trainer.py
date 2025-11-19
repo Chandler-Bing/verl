@@ -233,8 +233,8 @@ def compute_advantage(
 
         # Call compute_grpo_outcome_advantage with parameters matching its definition
         advs, rtns = [], []
-        multi_rewards = ["reward_xgb", "reward_mob3d30"]
-        #multi_rewards = ['reward_rank', ]
+        #multi_rewards = ["reward_xgb", "reward_mob3d30"]
+        multi_rewards = ['reward_rank', ]
         print(f'cal advantage using multiple rewards:{multi_rewards}')
         for k in multi_rewards:
             advantages, returns = core_algos.compute_grpo_outcome_advantage(

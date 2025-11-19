@@ -50,11 +50,12 @@ def compute_score(solution_str: str,
         #     pred = 0.99
         mob3d30 = int(extra_info['mob3d30'])
         xgb = float(ground_truth) / 100
-        reward_xgb = 1 - 2*(pred - xgb) ** 2 # [-1,1]
-        reward_mob3d30 = 1 - 2*(pred - mob3d30) ** 2 # [-1,1]
-        #reward_mob3d30 = mob3d30*math.log(pred) + (1-mob3d30)*math.log(1-pred) # [-inf,0]
-        #reward = reward_xgb*0.3 + reward_mob3d30*0.4 + rank_reward*0.3
-        reward = reward_xgb*0.5 + reward_mob3d30*0.5
+        # reward_xgb = 1 - 2*(pred - xgb) ** 2 # [-1,1]
+        # reward_mob3d30 = 1 - 2*(pred - mob3d30) ** 2 # [-1,1]
+        # #reward_mob3d30 = mob3d30*math.log(pred) + (1-mob3d30)*math.log(1-pred) # [-inf,0]
+        # #reward = reward_xgb*0.3 + reward_mob3d30*0.4 + rank_reward*0.3
+        # reward = reward_xgb*0.5 + reward_mob3d30*0.5
+        reward = rank_reward
 
     # #  多奖励融合方案
     #     xgb = int(float(ground_truth))
@@ -124,12 +125,12 @@ def compute_score(solution_str: str,
             "pred": pred,
             "mob3d30": mob3d30,
             "ground_truth": ground_truth,
-            "reward_xgb": reward_xgb,
-            "reward_mob3d30": reward_mob3d30,
+            #"reward_xgb": reward_xgb,
+            #"reward_mob3d30": reward_mob3d30,
             # "reward_ce": reward_ce,
             #"reward_brier": reward_brier,
             #"reward_xgb_bin": reward_xgb_bin,
-            #"reward_rank": rank_reward,
+            "reward_rank": rank_reward,
             # "reward_explore": reward_explore,
             # "cur_step": cur_step,
             # "alpha": alpha

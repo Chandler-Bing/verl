@@ -209,7 +209,10 @@ def compute_data_metrics(batch: DataProto, use_critic: bool = True) -> dict[str,
     }
     tmp_metrics = {"rewards/mean": {}, "rewards/max": {}, "rewards/min": {}}
     # for k in ["total_reward","reward_ce","reward_brier","reward_xgb_bin","reward_rank","reward_explore"]:
-    for k in ["total_reward", "reward_xgb", "reward_mob3d30"]:
+    #for k in ["total_reward", "reward_xgb", "reward_mob3d30"]:
+    for k in batch.batch.keys():
+        if 'reward_' not in k:
+            continue
         sequence_reward = batch.batch[k].sum(-1)
         tmp_metrics['rewards/mean'][k] = torch.mean(sequence_reward).detach().item()
         tmp_metrics['rewards/max'][k] = torch.max(sequence_reward).detach().item()
