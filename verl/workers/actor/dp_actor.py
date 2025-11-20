@@ -418,6 +418,7 @@ class DataParallelPPOActor(BasePPOActor):
                     micro_batches = mini_batch.split(self.config.ppo_micro_batch_size_per_gpu)
 
                 self.actor_optimizer.zero_grad()
+                print(f'before update,micro_batches: {len(micro_batches)=}')
 
                 for micro_batch in micro_batches:
                     micro_batch = micro_batch.to(get_device_id())
