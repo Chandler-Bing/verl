@@ -33,10 +33,10 @@ train_prompt_mini_bsz=32 #
 ppo_micro_batch_size_per_gpu=8
 
 # Ray
-RAY_ADDRESS=${RAY_ADDRESS:-"http://192.168.192.250:8265"}
+RAY_ADDRESS=${RAY_ADDRESS:-"http://192.168.25.91:8265"}
 WORKING_DIR=${WORKING_DIR:-"${PWD}"}
 RUNTIME_ENV=${RUNTIME_ENV:-"/data/oceanus_share/boruipeng/github/verl_0.6.1/verl/verl/trainer/runtime_env.yaml"}
-NNODES=${NNODES:-4}
+NNODES=${NNODES:-2}
 
 # Paths
 MODEL_PATH=${MODEL_PATH:-"/data/oceanus_share/boruipeng/github/v29/global_step_125/actor_hf"}

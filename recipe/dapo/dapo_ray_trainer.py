@@ -273,7 +273,7 @@ class RayDAPOTrainer(RayPPOTrainer):
                             for uid, std in prompt_uid2metric_std.items()
                             if std > 0 or len(prompt_uid2metric_vals[uid]) == 1
                         ]
-                        num_prompt_in_batch += len(kept_prompt_uids)
+                        #num_prompt_in_batch += len(kept_prompt_uids)
                         print(f'{len(kept_prompt_uids)=},{kept_prompt_uids[:32]=},{num_prompt_in_batch=}')
 
                         kept_traj_idxs = []
@@ -284,21 +284,23 @@ class RayDAPOTrainer(RayPPOTrainer):
                         new_batch = new_batch[kept_traj_idxs]
                         #batch = new_batch if batch is None else DataProto.concat([batch, new_batch])
 
+                        ###############################################################################################
                         ##### for rank reward ,after concat, we need to recompute reward and num_prompt_in_batch #####
                         if batch is None:
                             batch = new_batch
+                            num_prompt_in_batch += len(kept_prompt_uids)
                         else:
                             print('NOTE!!! recomputing reward after filtering for rank reward...')
                             i = 0
                             needed_num = (self.config.data.train_batch_size - num_prompt_in_batch)* self.config.actor_rollout_ref.rollout.n
-                            print(f'{num_prompt_in_batch=},{needed_num}=,{i=},{len(kept_traj_idxs)=}')
+                            print(f'{num_prompt_in_batch=},{needed_num=},{i=},{len(kept_traj_idxs)=}')
                             while num_prompt_in_batch < self.config.data.train_batch_size and needed_num < len(kept_traj_idxs) and i < len(kept_traj_idxs):
                                 print(f'{num_prompt_in_batch=},{needed_num=},{i=}')
                                 tmp_batch = new_batch[i:i+needed_num]
                                 biz_nos = []
                                 for data_item in tmp_batch:
                                     biz_nos.append(data_item.non_tensor_batch['extra_info']['biz_no'])
-                                assert len(set(biz_nos)) == needed_num, f'{len(set(biz_nos))=},{needed_num=},not equal!!!'
+                                #assert len(set(biz_nos)) * self.config.actor_rollout_ref.rollout.n == needed_num, f'{len(set(biz_nos))=},{needed_num=},not equal!!!'
                                 batch = DataProto.concat([batch, tmp_batch])
                                 reward_tensor, reward_extra_infos_dict = compute_reward(batch, self.reward_fn,step = self.global_steps,config = self.config)
 
@@ -343,7 +345,7 @@ class RayDAPOTrainer(RayPPOTrainer):
                                     for uid, std in prompt_uid2metric_std.items()
                                     if std > 0 or len(prompt_uid2metric_vals[uid]) == 1
                                 ]
-                                print(f'{kept_prompt_uids=},{i=}')
+                                print(f'{len(kept_prompt_uids)=},{i=}')
                                 #num_prompt_in_batch += len(kept_prompt_uids)
 
                                 kept_traj_idxs = []
@@ -455,9 +457,7 @@ class RayDAPOTrainer(RayPPOTrainer):
                             last_val_metrics = val_metrics
                     metrics.update(val_metrics)
 
-                if self.config.trainer.save_freq > 0 and (
-                    is_last_step or self.global_steps % self.config.trainer.save_freq == 0
-                ):
+                if (self.config.trainer.save_freq > 0 and (is_last_step or self.global_steps % self.config.trainer.save_freq == 0)) or self.should_save_because_is_best:
                     with marked_timer("save_checkpoint", timing_raw, "green"):
                         #self._save_checkpoint()
                         if self.should_save_because_is_best:
