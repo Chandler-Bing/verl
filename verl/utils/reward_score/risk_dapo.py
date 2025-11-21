@@ -60,7 +60,7 @@ def compute_score(solution_str: str,
         xgb = float(ground_truth) / 100
         reward_xgb = 1 - 2*(pred - xgb) ** 2 # [-1,1]
         reward_mob3d30 = 1 - 2*(pred - mob3d30) ** 2 # [-1,1]
-        is_conflict = (mob3d30 == 1 and  decision == 'D') or (mob3d30 == 0 and decision == 'A')
+        is_conflict = (mob3d30 == 1 and  decision == 'A') or (mob3d30 == 0 and decision == 'D')
         if is_conflict:
             reward = -1
         else:
@@ -138,6 +138,7 @@ def compute_score(solution_str: str,
             "pred": pred,
             "mob3d30": mob3d30,
             "ground_truth": ground_truth,
+            "reward": reward,
             "is_conflict": is_conflict,
             "reward_xgb": reward_xgb,
             "reward_mob3d30": reward_mob3d30,
