@@ -283,7 +283,7 @@ class RayDAPOTrainer(RayPPOTrainer):
                                 kept_traj_idxs.append(idx)
 
                         new_batch = new_batch[kept_traj_idxs]
-                        batch = new_batch if batch is None else DataProto.concat([batch, new_batch])
+                        #batch = new_batch if batch is None else DataProto.concat([batch, new_batch])
 
                         # ###############################################################################################
                         # ##### for rank reward ,after concat, we need to recompute reward and num_prompt_in_batch #####
