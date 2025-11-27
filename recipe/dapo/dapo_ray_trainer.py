@@ -274,7 +274,7 @@ class RayDAPOTrainer(RayPPOTrainer):
                             if std > 0 or len(prompt_uid2metric_vals[uid]) == 1
                         ]
                         # if rank, comment the following line
-                        #num_prompt_in_batch += len(kept_prompt_uids)
+                        num_prompt_in_batch += len(kept_prompt_uids)
                         #print(f'{len(kept_prompt_uids)=},{kept_prompt_uids[:32]=},{num_prompt_in_batch=}')
 
                         kept_traj_idxs = []
@@ -283,83 +283,83 @@ class RayDAPOTrainer(RayPPOTrainer):
                                 kept_traj_idxs.append(idx)
 
                         new_batch = new_batch[kept_traj_idxs]
-                        #batch = new_batch if batch is None else DataProto.concat([batch, new_batch])
+                        batch = new_batch if batch is None else DataProto.concat([batch, new_batch])
 
-                        # ###############################################################################################
-                        # ##### for rank reward ,after concat, we need to recompute reward and num_prompt_in_batch #####
-                        if batch is None:
-                            batch = new_batch
-                            num_prompt_in_batch += len(kept_prompt_uids)
-                        else:
-                            print('NOTE!!! recomputing reward after filtering for rank reward...')
-                            i = 0
-                            needed_num = (self.config.data.train_batch_size - num_prompt_in_batch)* self.config.actor_rollout_ref.rollout.n
-                            print(f'{num_prompt_in_batch=},{needed_num=},{i=},{len(kept_traj_idxs)=}')
-                            while num_prompt_in_batch < self.config.data.train_batch_size and needed_num < len(kept_traj_idxs) and i < len(kept_traj_idxs):
-                                print(f'{num_prompt_in_batch=},{needed_num=},{i=}')
-                                tmp_batch = new_batch[i:i+needed_num]
-                                biz_nos = []
-                                for data_item in tmp_batch:
-                                    biz_nos.append(data_item.non_tensor_batch['extra_info']['biz_no'])
-                                #assert len(set(biz_nos)) * self.config.actor_rollout_ref.rollout.n == needed_num, f'{len(set(biz_nos))=},{needed_num=},not equal!!!'
-                                batch = DataProto.concat([batch, tmp_batch])
-                                reward_tensor, reward_extra_infos_dict = compute_reward(batch, self.reward_fn,step = self.global_steps,config = self.config)
-
-                                #new_batch.batch["token_level_scores"] = reward_tensor
-                                if type(reward_tensor) is dict:
-                                    for k, v in reward_tensor.items():
-                                        batch.batch[k] = v
-                                    batch.batch["token_level_scores"] = reward_tensor['total_reward']
-                                else:
-                                    batch.batch["token_level_scores"] = reward_tensor
-
-                                if reward_extra_infos_dict:
-                                    batch.non_tensor_batch.update(
-                                        {k: np.array(v) for k, v in reward_extra_infos_dict.items()}
-                                    )
-
-                                # compute rewards. apply_kl_penalty if available
-                                if self.config.algorithm.use_kl_in_reward:
-                                    batch, kl_metrics = apply_kl_penalty(
-                                        batch, kl_ctrl=self.kl_ctrl_in_reward, kl_penalty=self.config.algorithm.kl_penalty
-                                    )
-                                    metrics.update(
-                                        kl_metrics
-                                    )  # TODO: This will be cleared if we use multiple genenration batches
-                                else:
-                                    batch.batch["token_level_rewards"] = batch.batch["token_level_scores"]
-                                prompt_uid2metric_vals = defaultdict(list)
-                                for uid, metric_val in zip(
-                                        batch.non_tensor_batch["uid"], batch.non_tensor_batch[metric_name],
-                                        strict=True
-                                ):
-                                    prompt_uid2metric_vals[uid].append(metric_val)
-
-                                prompt_uid2metric_std = {}
-                                for prompt_uid, metric_vals in prompt_uid2metric_vals.items():
-                                    prompt_uid2metric_std[prompt_uid] = np.std(metric_vals)
-
-                                kept_prompt_uids = [
-                                    uid
-                                    for uid, std in prompt_uid2metric_std.items()
-                                    if std > 0 or len(prompt_uid2metric_vals[uid]) == 1
-                                ]
-                                print(f'{len(kept_prompt_uids)=},{i=}')
-
-                                kept_traj_idxs = []
-                                for idx, traj_from_prompt_uid in enumerate(batch.non_tensor_batch["uid"]):
-                                    if traj_from_prompt_uid in kept_prompt_uids:
-                                        kept_traj_idxs.append(idx)
-
-                                batch = batch[kept_traj_idxs]
-
-                                i += needed_num
-                                num_prompt_in_batch = len(kept_prompt_uids)
-                                needed_num = (self.config.data.train_batch_size - num_prompt_in_batch) * self.config.actor_rollout_ref.rollout.n
-                                if needed_num <=0:
-                                    break
+                        # # ###############################################################################################
+                        # # ##### for rank reward ,after concat, we need to recompute reward and num_prompt_in_batch #####
+                        # if batch is None:
+                        #     batch = new_batch
+                        #     num_prompt_in_batch += len(kept_prompt_uids)
+                        # else:
+                        #     print('NOTE!!! recomputing reward after filtering for rank reward...')
+                        #     i = 0
+                        #     needed_num = (self.config.data.train_batch_size - num_prompt_in_batch)* self.config.actor_rollout_ref.rollout.n
+                        #     print(f'{num_prompt_in_batch=},{needed_num=},{i=},{len(kept_traj_idxs)=}')
+                        #     while num_prompt_in_batch < self.config.data.train_batch_size and needed_num < len(kept_traj_idxs) and i < len(kept_traj_idxs):
+                        #         print(f'{num_prompt_in_batch=},{needed_num=},{i=}')
+                        #         tmp_batch = new_batch[i:i+needed_num]
+                        #         biz_nos = []
+                        #         for data_item in tmp_batch:
+                        #             biz_nos.append(data_item.non_tensor_batch['extra_info']['biz_no'])
+                        #         #assert len(set(biz_nos)) * self.config.actor_rollout_ref.rollout.n == needed_num, f'{len(set(biz_nos))=},{needed_num=},not equal!!!'
+                        #         batch = DataProto.concat([batch, tmp_batch])
+                        #         reward_tensor, reward_extra_infos_dict = compute_reward(batch, self.reward_fn,step = self.global_steps,config = self.config)
                         #
-                        #         ####### basicly, copy from above ########
+                        #         #new_batch.batch["token_level_scores"] = reward_tensor
+                        #         if type(reward_tensor) is dict:
+                        #             for k, v in reward_tensor.items():
+                        #                 batch.batch[k] = v
+                        #             batch.batch["token_level_scores"] = reward_tensor['total_reward']
+                        #         else:
+                        #             batch.batch["token_level_scores"] = reward_tensor
+                        #
+                        #         if reward_extra_infos_dict:
+                        #             batch.non_tensor_batch.update(
+                        #                 {k: np.array(v) for k, v in reward_extra_infos_dict.items()}
+                        #             )
+                        #
+                        #         # compute rewards. apply_kl_penalty if available
+                        #         if self.config.algorithm.use_kl_in_reward:
+                        #             batch, kl_metrics = apply_kl_penalty(
+                        #                 batch, kl_ctrl=self.kl_ctrl_in_reward, kl_penalty=self.config.algorithm.kl_penalty
+                        #             )
+                        #             metrics.update(
+                        #                 kl_metrics
+                        #             )  # TODO: This will be cleared if we use multiple genenration batches
+                        #         else:
+                        #             batch.batch["token_level_rewards"] = batch.batch["token_level_scores"]
+                        #         prompt_uid2metric_vals = defaultdict(list)
+                        #         for uid, metric_val in zip(
+                        #                 batch.non_tensor_batch["uid"], batch.non_tensor_batch[metric_name],
+                        #                 strict=True
+                        #         ):
+                        #             prompt_uid2metric_vals[uid].append(metric_val)
+                        #
+                        #         prompt_uid2metric_std = {}
+                        #         for prompt_uid, metric_vals in prompt_uid2metric_vals.items():
+                        #             prompt_uid2metric_std[prompt_uid] = np.std(metric_vals)
+                        #
+                        #         kept_prompt_uids = [
+                        #             uid
+                        #             for uid, std in prompt_uid2metric_std.items()
+                        #             if std > 0 or len(prompt_uid2metric_vals[uid]) == 1
+                        #         ]
+                        #         print(f'{len(kept_prompt_uids)=},{i=}')
+                        #
+                        #         kept_traj_idxs = []
+                        #         for idx, traj_from_prompt_uid in enumerate(batch.non_tensor_batch["uid"]):
+                        #             if traj_from_prompt_uid in kept_prompt_uids:
+                        #                 kept_traj_idxs.append(idx)
+                        #
+                        #         batch = batch[kept_traj_idxs]
+                        #
+                        #         i += needed_num
+                        #         num_prompt_in_batch = len(kept_prompt_uids)
+                        #         needed_num = (self.config.data.train_batch_size - num_prompt_in_batch) * self.config.actor_rollout_ref.rollout.n
+                        #         if needed_num <=0:
+                        #             break
+                        # #
+                        # #         ####### basicly, copy from above ########
 
                         prompt_bsz = self.config.data.train_batch_size
                         if num_prompt_in_batch < prompt_bsz:

@@ -166,7 +166,8 @@ class FSDPModelMerger(BaseModelMerger):
                 # add tensor shard in order of rank to state_dict[key]
                 tensor = model_state_shard.pop(key)
                 if isinstance(tensor, DTensor):
-                    state_dict[key].append(tensor._local_tensor.bfloat16())
+                    #state_dict[key].append(tensor._local_tensor.bfloat16())
+                    state_dict[key].append(tensor.to_local().half())
 
                     placements = tuple(tensor.placements)
                     # replicated placement at dp dimension can be discarded
@@ -178,7 +179,8 @@ class FSDPModelMerger(BaseModelMerger):
                     else:
                         assert param_placements[key] == placements
                 else:
-                    state_dict[key].append(tensor.bfloat16())
+                    #state_dict[key].append(tensor.bfloat16())
+                    state_dict[key].append(tensor.half())
 
         del model_state_dict_lst
 
@@ -229,7 +231,8 @@ class FSDPModelMerger(BaseModelMerger):
     def _validate_state_dict(self, state_dict: dict[str, torch.Tensor]):
         auto_model_class = self.get_transformers_auto_model_class()
 
-        hf_model = auto_model_class.from_pretrained(self.config.test_hf_dir, torch_dtype=torch.bfloat16)
+        #hf_model = auto_model_class.from_pretrained(self.config.test_hf_dir, torch_dtype=torch.bfloat16)
+        hf_model = auto_model_class.from_pretrained(self.config.test_hf_dir, torch_dtype=torch.float16)
         hf_state_dict = hf_model.state_dict()
         del hf_model
 
