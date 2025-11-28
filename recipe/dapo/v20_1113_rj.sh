@@ -41,8 +41,8 @@ NNODES=${NNODES:-16}
 # Paths
 MODEL_PATH=${MODEL_PATH:-"/data/oceanus_share/xinzhimin/exp_outputs/v20_1113/sft_reject_sampling_end2end_6k_with_mob3d30/2e-5/checkpoint-150"}
 CKPTS_DIR=${CKPTS_DIR:-"/data/oceanus_share/boruipeng/github/${exp_name}"}
-TRAIN_FILE=${TRAIN_FILE:-"/data/oceanus_share/xinzhimin/data/risk0515/SFT_all/base0609/RL/train_xgb_1113_e2.0.parquet"}
-TEST_FILE=${TEST_FILE:-"/oceanus-pipline/dataset/prompt_e2/rl_valid_6k/valid_oot09_6k.parquet"}
+TRAIN_FILE=${TRAIN_FILE:-"/oceanus-pipline/dataset/prompt_e2/rl_20251128_24k/train/train_xgb_1128_e2.0.parquet"}
+TEST_FILE=${TEST_FILE:-"/oceanus-pipline/dataset/prompt_e2/rl_valid_6k/valid_oot09_6k_percent.parquet"}
 
 # Algorithm
 temperature=1.0
