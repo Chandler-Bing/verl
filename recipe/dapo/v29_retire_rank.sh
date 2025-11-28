@@ -33,16 +33,16 @@ train_prompt_mini_bsz=32 #
 ppo_micro_batch_size_per_gpu=8
 
 # Ray
-RAY_ADDRESS=${RAY_ADDRESS:-"http://192.168.25.232:8265"}
+RAY_ADDRESS=${RAY_ADDRESS:-"http://192.168.29.113:8265"}
 WORKING_DIR=${WORKING_DIR:-"${PWD}"}
 RUNTIME_ENV=${RUNTIME_ENV:-"/data/oceanus_share/boruipeng/github/verl_0.6.1/verl/verl/trainer/runtime_env.yaml"}
-NNODES=${NNODES:-16}
+NNODES=${NNODES:-8}
 
 # Paths
-MODEL_PATH=${MODEL_PATH:-"/data/oceanus_share/boruipeng/github/v29_retire/global_step_80/actor_hf"}
+MODEL_PATH=${MODEL_PATH:-"/data/oceanus_share/boruipeng/github/v29_retire/global_step_110/actor_hf"}
 CKPTS_DIR=${CKPTS_DIR:-"/data/oceanus_share/boruipeng/github/${exp_name}"}
 TRAIN_FILE=${TRAIN_FILE:-"/oceanus-pipline/dataset/prompt_6_1/rl_train_12k/train/train_xgb_1119.parquet"}
-TEST_FILE=${TEST_FILE:-"/oceanus-pipline/dataset/prompt_6_1/rl_valid_3k/test/valid_1119.parquet"}
+TEST_FILE=${TEST_FILE:-"/oceanus-pipline/dataset/prompt_6_1/rl_valid_3k/test/valid_1125_1_2.parquet"}
 
 # Algorithm
 temperature=1.0
@@ -75,6 +75,7 @@ ray job submit --no-wait --address ${RAY_ADDRESS} --runtime-env="${RUNTIME_ENV}"
     data.train_batch_size=${train_prompt_bsz} \
     actor_rollout_ref.rollout.n=${n_resp_per_prompt} \
     algorithm.adv_estimator=${adv_estimator} \
+    algorithm.norm_adv_by_std_in_grpo=False \
     algorithm.use_kl_in_reward=${use_kl_in_reward} \
     algorithm.kl_ctrl.kl_coef=${kl_coef} \
     actor_rollout_ref.actor.use_kl_loss=${use_kl_loss} \
@@ -98,7 +99,7 @@ ray job submit --no-wait --address ${RAY_ADDRESS} --runtime-env="${RUNTIME_ENV}"
     +actor_rollout_ref.model.override_config.resid_pdrop=0. \
     actor_rollout_ref.model.enable_gradient_checkpointing=True \
     actor_rollout_ref.actor.optim.lr=2e-6 \
-    actor_rollout_ref.actor.optim.lr_warmup_steps=10 \
+    actor_rollout_ref.actor.optim.lr_warmup_steps=5 \
     actor_rollout_ref.actor.optim.weight_decay=0.1 \
     actor_rollout_ref.actor.ppo_mini_batch_size=${train_prompt_mini_bsz} \
     actor_rollout_ref.actor.ppo_micro_batch_size_per_gpu=${ppo_micro_batch_size_per_gpu} \
