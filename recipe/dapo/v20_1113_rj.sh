@@ -30,7 +30,7 @@ train_prompt_bsz=256
 gen_prompt_bsz=256
 n_resp_per_prompt=16
 train_prompt_mini_bsz=32 #
-ppo_micro_batch_size_per_gpu=4
+ppo_micro_batch_size_per_gpu=8
 
 # Ray
 RAY_ADDRESS=${RAY_ADDRESS:-"http://192.168.28.45:8265"}
@@ -99,7 +99,7 @@ ray job submit --no-wait --address ${RAY_ADDRESS} --runtime-env="${RUNTIME_ENV}"
     +actor_rollout_ref.model.override_config.resid_pdrop=0. \
     actor_rollout_ref.model.enable_gradient_checkpointing=True \
     actor_rollout_ref.actor.optim.lr=2e-6 \
-    actor_rollout_ref.actor.optim.lr_warmup_steps=10 \
+    actor_rollout_ref.actor.optim.lr_warmup_steps=5 \
     actor_rollout_ref.actor.optim.weight_decay=0.1 \
     actor_rollout_ref.actor.ppo_mini_batch_size=${train_prompt_mini_bsz} \
     actor_rollout_ref.actor.ppo_micro_batch_size_per_gpu=${ppo_micro_batch_size_per_gpu} \
