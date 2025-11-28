@@ -57,7 +57,8 @@ def compute_score(solution_str: str,
         # if pred == 1:
         #     pred = 0.99
         mob3d30 = int(extra_info['mob3d30'])
-        xgb = float(ground_truth) / 100
+        #xgb = float(ground_truth) / 100
+        xgb = float(extra_info['xgb_score'])
         reward_xgb = 1 - 2*(pred - xgb) ** 2 # [-1,1]
         reward_mob3d30 = 1 - 2*(pred - mob3d30) ** 2 # [-1,1]
         # is_conflict = (mob3d30 == 1 and  decision == 'A') or (mob3d30 == 0 and decision == 'D')
@@ -67,7 +68,7 @@ def compute_score(solution_str: str,
         #     reward = reward_xgb*0.3 + reward_mob3d30*0.7
         #reward_mob3d30 = mob3d30*math.log(pred) + (1-mob3d30)*math.log(1-pred) # [-inf,0]
         #reward = reward_xgb*0.3 + reward_mob3d30*0.4 + rank_reward*0.3
-        reward = reward_xgb*0.5 + reward_mob3d30*0.5
+        reward = reward_xgb*0.4 + reward_mob3d30*0.6
         #reward = rank_reward
 
     # #  多奖励融合方案
