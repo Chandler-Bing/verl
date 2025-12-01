@@ -232,33 +232,33 @@ def compute_advantage(
         grpo_calculation_mask = data.batch["response_mask"]
 
         # Call compute_grpo_outcome_advantage with parameters matching its definition
-        # advs, rtns = [], []
-        # #multi_rewards = ["reward_xgb", "reward_mob3d30"]
-        # multi_rewards = ['reward_rank', ]
-        # print(f'cal advantage using multiple rewards:{multi_rewards}')
-        # for k in multi_rewards:
-        #     advantages, returns = core_algos.compute_grpo_outcome_advantage(
-        #         # token_level_rewards=data.batch["token_level_rewards"],
-        #         token_level_rewards=data.batch[k],
-        #         response_mask=grpo_calculation_mask,
-        #         index=data.non_tensor_batch["uid"],
-        #         norm_adv_by_std_in_grpo=norm_adv_by_std_in_grpo,
-        #     )
-        #     advs.append(advantages)
-        #     rtns.append(returns)
-        # advantages = sum(advs) / len(advs)
-        # returns =  sum(rtns) / len(rtns)
-        # data.batch["advantages"] = advantages
-        # data.batch["returns"] = returns
-        print(f'NOTE !!!! using adv algo = grpo with {norm_adv_by_std_in_grpo=}')
-        advantages, returns = core_algos.compute_grpo_outcome_advantage(
-            token_level_rewards=data.batch["token_level_rewards"],
-            response_mask=grpo_calculation_mask,
-            index=data.non_tensor_batch["uid"],
-            norm_adv_by_std_in_grpo=norm_adv_by_std_in_grpo,
-        )
+        advs, rtns = [], []
+        multi_rewards = ["reward_xgb", "reward_mob3d30"]
+        #multi_rewards = ['reward_rank', ]
+        print(f'cal advantage using multiple rewards:{multi_rewards}')
+        for k in multi_rewards:
+            advantages, returns = core_algos.compute_grpo_outcome_advantage(
+                # token_level_rewards=data.batch["token_level_rewards"],
+                token_level_rewards=data.batch[k],
+                response_mask=grpo_calculation_mask,
+                index=data.non_tensor_batch["uid"],
+                norm_adv_by_std_in_grpo=norm_adv_by_std_in_grpo,
+            )
+            advs.append(advantages)
+            rtns.append(returns)
+        advantages = sum(advs) / len(advs)
+        returns =  sum(rtns) / len(rtns)
         data.batch["advantages"] = advantages
         data.batch["returns"] = returns
+        # print(f'NOTE !!!! using adv algo = grpo with {norm_adv_by_std_in_grpo=}')
+        # advantages, returns = core_algos.compute_grpo_outcome_advantage(
+        #     token_level_rewards=data.batch["token_level_rewards"],
+        #     response_mask=grpo_calculation_mask,
+        #     index=data.non_tensor_batch["uid"],
+        #     norm_adv_by_std_in_grpo=norm_adv_by_std_in_grpo,
+        # )
+        # data.batch["advantages"] = advantages
+        # data.batch["returns"] = returns
     else:
         # handle all other adv estimator type other than GAE and GRPO
         adv_estimator_fn = core_algos.get_adv_estimator_fn(adv_estimator)

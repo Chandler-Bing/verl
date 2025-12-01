@@ -71,7 +71,7 @@ def compute_score(solution_str: str,
         #     reward = reward_xgb*0.3 + reward_mob3d30*0.7
         #reward_mob3d30 = mob3d30*math.log(pred) + (1-mob3d30)*math.log(1-pred) # [-inf,0]
         #reward = reward_xgb*0.3 + reward_mob3d30*0.4 + rank_reward*0.3
-        reward = reward_xgb*0.4 + reward_mob3d30*0.6
+        reward = reward_xgb*0.5 + reward_mob3d30*0.5
         #reward = rank_reward
 
     # #  多奖励融合方案

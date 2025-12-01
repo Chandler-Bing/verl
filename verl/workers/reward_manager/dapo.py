@@ -235,7 +235,7 @@ class DAPORewardManager(AbstractRewardManager):
 
             reward = score
             for k, v in result['details'].items():
-                if 'reward' in k:
+                if 'reward_' in k:
                     if k not in all_reward.keys():
                         all_reward[k] = torch.zeros_like(data.batch["responses"], dtype=torch.float32)
                     all_reward[k][i, valid_response_length - 1] = v
