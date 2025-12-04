@@ -459,8 +459,11 @@ class RayDAPOTrainer(RayPPOTrainer):
                     with marked_timer("save_checkpoint", timing_raw, "green"):
                         #self._save_checkpoint()
                         if self.should_save_because_is_best:
-                            self._save_checkpoint(is_best=True)
-                            self.should_save_because_is_best = False
+                            if self.global_steps >1:
+                                self._save_checkpoint(is_best=True)
+                                self.should_save_because_is_best = False
+                            else:
+                                pass
                         else:
                             self._save_checkpoint()
 

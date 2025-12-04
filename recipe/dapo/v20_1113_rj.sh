@@ -33,7 +33,7 @@ train_prompt_mini_bsz=32 #
 ppo_micro_batch_size_per_gpu=8
 
 # Ray
-RAY_ADDRESS=${RAY_ADDRESS:-"http://192.168.28.45:8265"}
+RAY_ADDRESS=${RAY_ADDRESS:-"http://192.168.29.161:8265"}
 WORKING_DIR=${WORKING_DIR:-"${PWD}"}
 RUNTIME_ENV=${RUNTIME_ENV:-"/data/oceanus_share/boruipeng/github/verl_0.6.1/verl/verl/trainer/runtime_env.yaml"}
 NNODES=${NNODES:-16}
@@ -41,8 +41,8 @@ NNODES=${NNODES:-16}
 # Paths
 MODEL_PATH=${MODEL_PATH:-"/data/oceanus_share/xinzhimin/exp_outputs/v20_1113/sft_reject_sampling_end2end_6k_with_mob3d30/2e-5/checkpoint-150"}
 CKPTS_DIR=${CKPTS_DIR:-"/data/oceanus_share/boruipeng/github/${exp_name}"}
-TRAIN_FILE=${TRAIN_FILE:-"/oceanus-pipline/dataset/prompt_e2/rl_20251128_24k/train/train_xgb_1128_e2.0.parquet"}
-TEST_FILE=${TEST_FILE:-"/oceanus-pipline/dataset/prompt_e2/rl_valid_6k/valid_oot09_6k_percent.parquet"}
+TRAIN_FILE=${TRAIN_FILE:-"/oceanus-pipline/dataset/prompt_e2/rl_20251128_24k/train/train_xgb_1203_delper_e2.0.parquet"}
+TEST_FILE=${TEST_FILE:-"/oceanus-pipline/dataset/prompt_e2/rl_valid_6k/valid_oot09_6k.parquet"}
 
 # Algorithm
 temperature=1.0
@@ -99,7 +99,7 @@ ray job submit --no-wait --address ${RAY_ADDRESS} --runtime-env="${RUNTIME_ENV}"
     +actor_rollout_ref.model.override_config.resid_pdrop=0. \
     actor_rollout_ref.model.enable_gradient_checkpointing=True \
     actor_rollout_ref.actor.optim.lr=2e-6 \
-    actor_rollout_ref.actor.optim.lr_warmup_steps=5 \
+    actor_rollout_ref.actor.optim.lr_warmup_steps=2 \
     actor_rollout_ref.actor.optim.weight_decay=0.1 \
     actor_rollout_ref.actor.ppo_mini_batch_size=${train_prompt_mini_bsz} \
     actor_rollout_ref.actor.ppo_micro_batch_size_per_gpu=${ppo_micro_batch_size_per_gpu} \
@@ -117,6 +117,7 @@ ray job submit --no-wait --address ${RAY_ADDRESS} --runtime-env="${RUNTIME_ENV}"
     actor_rollout_ref.rollout.temperature=${temperature} \
     actor_rollout_ref.rollout.name=vllm \
     actor_rollout_ref.rollout.top_p=${top_p} \
+    actor_rollout_ref.rollout.enforce_eager=True \
     actor_rollout_ref.rollout.top_k="${top_k}" \
     actor_rollout_ref.rollout.val_kwargs.temperature=${temperature} \
     actor_rollout_ref.rollout.val_kwargs.top_p=${top_p} \
