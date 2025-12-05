@@ -83,7 +83,11 @@ def compute_score(solution_str: str,
         reward_mob3d30 = 1 - 2*(pred - mob3d30) ** 2 # [-1,1]
         #is_conflict = (mob3d30 == 1 and  decision == 'A') or (mob3d30 == 0 and decision == 'D')
         if consistency == '一致':
-            reward = reward_xgb*0.5 + reward_mob3d30*0.5
+            is_conflict = (mob3d30 == 1 and decision == 'A') or (mob3d30 == 0 and decision == 'D')
+            if is_conflict:
+                reward = -1
+            else:
+                reward = reward_xgb*0.4 + reward_mob3d30*0.6
         else:
             reward = -1
         # if is_conflict:
