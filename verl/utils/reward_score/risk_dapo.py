@@ -15,11 +15,18 @@ def extract2(solution_str):
     decision = extract.get('decision')
     return decision
 
+def extract_consis(consis):
+    json_str = re.findall(r'```json(.*?)```', consis, re.DOTALL)
+    extract = json.loads(json_str[-1])
+    consistency = extract.get('consistency')
+    return consistency
+
 def compute_score(solution_str: str,
                   ground_truth: str,
                   extra_info: dict,
                   rank_reward: float,
-                  cur_step:int
+                  cur_step:int,
+                  consis:str
                   ) -> dict:
 
     # Limit solution length for efficiency
@@ -27,11 +34,21 @@ def compute_score(solution_str: str,
 
     try:
         pred = extract(solution_str)
-        decision = extract2(solution_str)
     except Exception as e:
         print(f'计算reward时出错: {str(e)}')
         pred = None
+
+    try:
+        decision = extract2(solution_str)
+    except Exception as e:
+        print(f'计算decision时出错: {str(e)}')
         decision = None
+
+    try:
+        consistency = extract_consis(consis)
+    except Exception as e:
+        print(f'计算consistency时出错: {str(e)}')
+        consistency = None
 
     # no answer no reward
     if pred is None or pred > 100 or pred < 0:
@@ -64,14 +81,18 @@ def compute_score(solution_str: str,
             xgb = float(ground_truth) / 100
         reward_xgb = 1 - 2*(pred - xgb) ** 2 # [-1,1]
         reward_mob3d30 = 1 - 2*(pred - mob3d30) ** 2 # [-1,1]
-        # is_conflict = (mob3d30 == 1 and  decision == 'A') or (mob3d30 == 0 and decision == 'D')
+        #is_conflict = (mob3d30 == 1 and  decision == 'A') or (mob3d30 == 0 and decision == 'D')
+        if consistency == '一致':
+            reward = reward_xgb*0.5 + reward_mob3d30*0.5
+        else:
+            reward = -1
         # if is_conflict:
         #     reward = -1
         # else:
         #     reward = reward_xgb*0.3 + reward_mob3d30*0.7
         #reward_mob3d30 = mob3d30*math.log(pred) + (1-mob3d30)*math.log(1-pred) # [-inf,0]
         #reward = reward_xgb*0.3 + reward_mob3d30*0.4 + rank_reward*0.3
-        reward = reward_xgb*0.5 + reward_mob3d30*0.5
+        #reward = reward_xgb*0.5 + reward_mob3d30*0.5
         #reward = rank_reward
 
     # #  多奖励融合方案
@@ -143,6 +164,8 @@ def compute_score(solution_str: str,
             "mob3d30": mob3d30,
             "ground_truth": ground_truth,
             "reward": reward,
+            "consistency": consistency,
+            "decision": decision,
             #"is_conflict": is_conflict,
             "reward_xgb": reward_xgb,
             "reward_mob3d30": reward_mob3d30,

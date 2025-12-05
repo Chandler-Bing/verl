@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import time
 from collections import defaultdict
 
 import torch
@@ -24,6 +24,60 @@ import re
 import json
 import os
 import decimal
+import re
+import requests
+import json
+import copy
+import concurrent.futures
+from tqdm import tqdm
+prompt_template = """你是一个风险评估审核专家。你的任务是判断给定的 Chain-of-Thought（COT）和最终决策（A/D）是否逻辑一致。输出格式为 **JSON**，内容包括判断结果和原因。请根据以下标准进行判断：
+- **低风险 / 中低风险** → 应该决策为 **通过（A）**
+- **高风险 / 中高风险** → 应该决策为 **拒绝（D）**
+- **中等风险** → 既可以是 **A** 也可以是 **D**，但必须有合理解释，且风险得分必须在40-60之间。
+请输出 JSON 格式如下：
+```json
+{{
+  "consistency": "一致 / 不一致"
+}}
+```
+需要判断的内容如下：
+- Chain-of-Thought（COT）推理内容：
+{cot}
+- 最终决策（A/D）：
+{decision}
+- 风险得分（risk_score）：
+{risk_score}
+"""
+
+def _generate(
+        messages,
+        model='x',
+        url='http://192.168.194.137:40000/v1/chat/completions',
+        temperature=0.6,
+        max_tokens=128,
+        top_p=1.0
+):
+    body = {
+        'model': model,
+        'messages': messages,
+        'top_p': top_p,
+        'top_k': -1,
+        'temperature': temperature,
+        'max_tokens': max_tokens,
+        "chat_template_kwargs": {"enable_thinking": False}
+    }
+    headers = {"content-type": "application/json; charset=UTF-8",
+               'Authorization': 'Bearer eyJhbGciOiJSUzI1NiIsImtpZCI6IjM2YzIzMWNhZDVlN2ZhMjMyNjVkMDQzNmEyY2UzOTdiMjlmOGZiYjAifQ.eyJqdGkiOiJMeVVFeTB5TDZfTXk5LVU0NHF3ZUFBIiwiaWF0IjoxNzQ0MjcyODIyLCJleHAiOjE3NDY4NjQ4MjIsIm5iZiI6MTc0NDI3Mjc2Miwic3ViIjoiQ2dFd0dncDJiMnhqWlc1bmFXNWwiLCJhdWQiOiJnY3ZyM3RxdmM3amFvdDZjdHZhMTAiLCJpc3MiOiJwYWFzdG9iLnBhYXMub2lkYyIsImFjY291bnRfaWQiOjIxMDQwNTE3MjcsIm5vbmNlIjoiY0FqYWxqYlBPVnRLR3dPaCJ9.hsQXvTuXcXkYd2Hz8d5e1eEl7dIl2Uyo_G5EuapTTTeARW_GpiddpTUonz65nxrX3GQQO4FWG4v3hSxlIv2lux3ZZjslA4TopeOM7xokfX2Axgk-4kaxhpizlxkmPE2CZYmg3yjryOn1b-MRuKaAMyAO79UsaZyMotcJNuYuGXRWI7E-d_Tc6BcCMjkTGiLuwM9sK5sTCLVJsBrvxWdl6_Xn94p_PpPbgmHeLAhq2kvdR7W7yGPxkGkKg62C52ZXDFUUx_AvCEbH3r-8-rid5IU0O_KS2RHsCGE8TjXZZGR7jGRPbn9vu6tLXiAqb11sKBK2GLhSPcq3JkPJ8L4LFA'}
+    response = requests.post(url, json=body, headers=headers)
+    try:
+        if response.json().get("choices")[0].get("message", {}).get('reasoning_content', ''):
+            return response.json().get("choices")[0].get("message", {}).get('reasoning_content', '') + '</think>' + \
+                response.json().get("choices")[0].get("message", {}).get('content', '')
+        else:
+            return response.json().get("choices")[0].get("message", {}).get('content', '')
+    except Exception as e:
+        print(f'{response.status_code=}: {response.text=},{str(e)}')
+        return str(e)
 
 
 @register("dapo")
@@ -86,6 +140,15 @@ class DAPORewardManager(AbstractRewardManager):
                 return risk_score
             except:
                 return -100
+
+        def extract_solution(solution_str):
+            try:
+                json_str = re.findall(r'```json(.*?)```', solution_str, re.DOTALL)
+                extract_str = json.loads(json_str[-1])
+                decision = extract_str.get('decision')
+                return decision
+            except:
+                return ""
 
         def rank_reward(solution_strs, mob3d30s, n):
             solution_strs = [extract(solution_str) / 100 for solution_str in solution_strs]
@@ -167,6 +230,28 @@ class DAPORewardManager(AbstractRewardManager):
             rank_rewards = [0 for i in range(len(solution_strs))]
 
 
+        print(f'judge the score and cot consistency... start at {time.time()}')
+        cots = [solution_str.split('</think>',1)[0].strip() for solution_str in solution_strs]
+        cots = [cot.rsplit("\n", 1)[1].strip() for cot in cots]
+        decisions = [extract_solution(solution_str) for solution_str in solution_strs]
+        risk_scores = [extract(solution_str) for solution_str in solution_strs]
+        all_messages_list = []
+        for cot, decision,risk_score in zip(cots, decisions,risk_scores):
+            prompt = prompt_template.format(cot=cot, decision=decision,risk_score=risk_score)
+            all_messages_list.append([{"role": "user", "content": prompt}])
+
+        all_results = [None for _ in range(len(all_messages_list))]
+        with tqdm(total=len(all_messages_list)) as pbar:
+            with concurrent.futures.ThreadPoolExecutor(max_workers=4096) as executor:
+                futures = {executor.submit(_generate, data): idx for idx, data in enumerate(all_messages_list)}
+                for future in concurrent.futures.as_completed(futures):
+                    idx = futures[future]
+                    all_results[idx] = future.result()
+                    pbar.update(1)
+                    pbar.refresh()
+        print(f'judge the score and cot consistency... done at {time.time()}')
+
+
         already_print_data_sources = {}
         y_trues = []
         y_preds = []
@@ -216,7 +301,8 @@ class DAPORewardManager(AbstractRewardManager):
                 ground_truth=ground_truth,
                 extra_info=extra_info,
                 rank_reward=rank_rewards[i],
-                cur_step=step
+                cur_step=step,
+                consis=all_results[i],
             )
             details.append(result["details"])
             if result['pred'] is not None and result['pred'] != "":

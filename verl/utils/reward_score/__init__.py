@@ -26,6 +26,7 @@ def default_compute_score(
     memory_limit_mb=None,
     rank_reward = None,
     cur_step = 0,
+    consis = '',
     **kwargs,
 ):
     """Compute the score for a given solution based on the data source.
@@ -107,7 +108,7 @@ def default_compute_score(
 
     elif data_source == 'risk_dapo':
         from . import risk_dapo
-        res = risk_dapo.compute_score(solution_str, ground_truth,extra_info = extra_info ,rank_reward=rank_reward,cur_step=cur_step)
+        res = risk_dapo.compute_score(solution_str, ground_truth,extra_info = extra_info ,rank_reward=rank_reward,cur_step=cur_step,consis=consis)
     else:
         raise NotImplementedError(f"Reward function is not implemented for {data_source=}")
 
