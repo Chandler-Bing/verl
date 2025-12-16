@@ -457,15 +457,15 @@ class RayDAPOTrainer(RayPPOTrainer):
 
                 if (self.config.trainer.save_freq > 0 and (is_last_step or self.global_steps % self.config.trainer.save_freq == 0)) or self.should_save_because_is_best:
                     with marked_timer("save_checkpoint", timing_raw, "green"):
-                        #self._save_checkpoint()
-                        if self.should_save_because_is_best:
-                            if self.global_steps >1:
-                                self._save_checkpoint(is_best=True)
-                                self.should_save_because_is_best = False
-                            else:
-                                pass
-                        else:
-                            self._save_checkpoint()
+                        self._save_checkpoint()
+                        # if self.should_save_because_is_best:
+                        #     if self.global_steps >1:
+                        #         self._save_checkpoint(is_best=True)
+                        #         self.should_save_because_is_best = False
+                        #     else:
+                        #         pass
+                        # else:
+                        #     self._save_checkpoint()
 
                 with marked_timer("stop_profile", timing_raw):
                     next_step_profile = (
