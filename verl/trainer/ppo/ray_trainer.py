@@ -666,7 +666,7 @@ class RayPPOTrainer:
         auc = roc_auc_score(y_score=y_predss, y_true=y_truess)
         if auc > self.best_performance:
             self.best_performance = auc
-            self.should_save_because_is_best = True
+            #self.should_save_because_is_best = True
         reward_extra_infos_dict['auc'] = [auc] * len(sample_scores)
         print(f"{self.global_steps=} validation auc: {auc}")
 

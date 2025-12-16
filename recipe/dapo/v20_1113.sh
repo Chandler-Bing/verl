@@ -33,7 +33,7 @@ train_prompt_mini_bsz=32 #
 ppo_micro_batch_size_per_gpu=8
 
 # Ray
-RAY_ADDRESS=${RAY_ADDRESS:-"http://192.168.21.159:8265"}
+RAY_ADDRESS=${RAY_ADDRESS:-"http://192.168.21.191:8265"}
 WORKING_DIR=${WORKING_DIR:-"${PWD}"}
 RUNTIME_ENV=${RUNTIME_ENV:-"/data/oceanus_share/boruipeng/github/verl_0.6.1/verl/verl/trainer/runtime_env.yaml"}
 NNODES=${NNODES:-32}
