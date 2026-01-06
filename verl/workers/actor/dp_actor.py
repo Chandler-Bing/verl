@@ -402,6 +402,7 @@ class DataParallelPPOActor(BasePPOActor):
         # Split to make minibatch iterator for updating the actor
         # See PPO paper for details. https://arxiv.org/abs/1707.06347
         mini_batches = data.split(self.config.ppo_mini_batch_size)
+        print(f'batch 信息:{len(mini_batches)=}, {self.config.ppo_mini_batch_size=}')
 
         on_policy = len(mini_batches) == 1 and self.config.ppo_epochs == 1
 
@@ -418,7 +419,7 @@ class DataParallelPPOActor(BasePPOActor):
                     micro_batches = mini_batch.split(self.config.ppo_micro_batch_size_per_gpu)
 
                 self.actor_optimizer.zero_grad()
-                print(f'before update,micro_batches: {len(micro_batches)=}')
+                print(f'batch 信息:before update,micro_batches: {len(micro_batches)=},{self.config.ppo_micro_batch_size_per_gpu=},{self.gradient_accumulation=}')
 
                 for micro_batch in micro_batches:
                     micro_batch = micro_batch.to(get_device_id())

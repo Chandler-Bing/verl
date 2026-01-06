@@ -36,8 +36,8 @@ def compute_score(solution_str: str,
     # no answer no reward
     if pred is None or pred > 100 or pred < 0:
         return {
-        "score": -2,
-        "acc": -2,
+        "score": -1,
+        "acc": -1,
         "pred": "",
         "details": {"pred":pred}
     }
@@ -146,6 +146,7 @@ def compute_score(solution_str: str,
             #"is_conflict": is_conflict,
             "reward_xgb": reward_xgb,
             "reward_mob3d30": reward_mob3d30,
+            "decision":decision,
             # "reward_ce": reward_ce,
             #"reward_brier": reward_brier,
             #"reward_xgb_bin": reward_xgb_bin,
