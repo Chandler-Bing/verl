@@ -171,6 +171,7 @@ class DAPORewardManager(AbstractRewardManager):
         y_trues = []
         y_preds = []
         prompts = []
+        old_responses = []
         responses = []
         extra_infos = []
         details = []
@@ -189,11 +190,17 @@ class DAPORewardManager(AbstractRewardManager):
             valid_response_length = data_item.batch["attention_mask"][prompt_length:].sum()
             valid_response_ids = response_ids[:valid_response_length]
 
+            old_response_ids = data_item.batch["old_responses"]
+            old_valid_response_length = data_item.batch["old_attention_mask"][prompt_length:].sum()
+            old_valid_response_ids = old_response_ids[:old_valid_response_length]
+
             # decode
             prompt_str = self.tokenizer.decode(valid_prompt_ids, skip_special_tokens=True)
             response_str = self.tokenizer.decode(valid_response_ids, skip_special_tokens=True)
+            old_response_str = self.tokenizer.decode(old_valid_response_ids, skip_special_tokens=True)
             prompts.append(prompt_str)
             responses.append(response_str)
+            old_responses.append(old_response_str)
 
             eos_token = self.tokenizer.eos_token
             if response_str.endswith(eos_token):
@@ -283,7 +290,7 @@ class DAPORewardManager(AbstractRewardManager):
                     v += 1
                 print(f'saving rollout results to {rollout_txt_path}')
                 with open(rollout_txt_path, 'w', encoding='utf-8') as f:
-                    for p, r, e, d in zip(prompts, responses, extra_infos, details):
+                    for p, r, e, d,o_r in zip(prompts, responses, extra_infos, details,old_responses):
                         e = dict(e)
                         for k, v in e.items():
                             if type(v) is decimal.Decimal:
@@ -292,7 +299,7 @@ class DAPORewardManager(AbstractRewardManager):
                                 # print(f'after,{type(v)}')
                                 e[k] = v
                         f.write(
-                            json.dumps({'prompt': p, 'response': r, 'extra_info': e, "details": d}, ensure_ascii=False))
+                            json.dumps({'prompt': p, 'response': r, 'old_response':o_r ,'extra_info': e, "details": d}, ensure_ascii=False))
                         f.write('\n')
                 print(f'saving done....')
                 return {

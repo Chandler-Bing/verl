@@ -111,6 +111,7 @@ class DataParallelPPOActor(BasePPOActor):
             batch_size, seqlen = input_ids.shape
             attention_mask = micro_batch["attention_mask"]
             position_ids = micro_batch["position_ids"]
+
             entropy = None
             if position_ids.dim() == 3:  # qwen2vl mrope
                 position_ids = position_ids.transpose(0, 1)  # (bsz, 4, seqlen) -> (4, bsz, seqlen)
@@ -402,9 +403,9 @@ class DataParallelPPOActor(BasePPOActor):
         # Split to make minibatch iterator for updating the actor
         # See PPO paper for details. https://arxiv.org/abs/1707.06347
         mini_batches = data.split(self.config.ppo_mini_batch_size)
-        print(f'batch 信息:{len(mini_batches)=}, {self.config.ppo_mini_batch_size=}')
 
         on_policy = len(mini_batches) == 1 and self.config.ppo_epochs == 1
+        print(f'batch 信息:{len(data)=},{len(mini_batches)=}, {self.config.ppo_mini_batch_size=},{on_policy=}')
 
         metrics = {}
         for _ in range(self.config.ppo_epochs):
@@ -421,7 +422,8 @@ class DataParallelPPOActor(BasePPOActor):
                 self.actor_optimizer.zero_grad()
                 print(f'batch 信息:before update,micro_batches: {len(micro_batches)=},{self.config.ppo_micro_batch_size_per_gpu=},{self.gradient_accumulation=}')
 
-                for micro_batch in micro_batches:
+                for i,micro_batch in enumerate(micro_batches):
+                    print(f'updating mirco_batch, {i} of {len(micro_batches)}...')
                     micro_batch = micro_batch.to(get_device_id())
                     micro_batch_metrics = {}
                     model_inputs = {**micro_batch.batch, **micro_batch.non_tensor_batch}
@@ -450,6 +452,7 @@ class DataParallelPPOActor(BasePPOActor):
                         old_log_prob = model_inputs["old_log_probs"]
                     else:
                         if on_policy:
+                            print(f'{on_policy=},using recomputed detached log prob as old log prob!!!!')
                             old_log_prob = log_prob.detach()
                         else:
                             old_log_prob = model_inputs["old_log_probs"]

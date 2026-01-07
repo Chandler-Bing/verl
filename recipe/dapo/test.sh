@@ -29,7 +29,7 @@ max_num_gen_batches=20
 train_prompt_bsz=8
 gen_prompt_bsz=8
 n_resp_per_prompt=2
-train_prompt_mini_bsz=16 #
+train_prompt_mini_bsz=8 #
 ppo_micro_batch_size_per_gpu=1
 
 # Ray

@@ -17,6 +17,7 @@ This trainer supports model-agonistic model initialization with huggingface
 """
 
 import os
+import time
 import uuid
 from collections import defaultdict
 from copy import deepcopy
@@ -46,6 +47,60 @@ class RayDAPOTrainer(RayPPOTrainer):
     """
     Note that this trainer runs on the driver process on a single CPU/GPU node.
     """
+
+    def modify_output(self,input_ids:torch.Tensor,attention_masks:torch.Tensor, position_ids:torch.Tensor,responses:torch.Tensor):
+        # Modify the output as needed by boruipeng
+        print(f'{input_ids.size()=},{attention_masks.size()=},{position_ids.size()=},{responses.size()=}')
+        def process_text(text):
+            import re
+            import json
+            import random
+            prompt_cot, json_str = text.split('</think>')
+            json_str = re.findall(r'```json(.*?)```', json_str, re.DOTALL)
+            json_str = json_str[0].strip().replace('```json', '').replace('```', '')
+            json_body = json.loads(json_str)
+            risk_score = float(json_body.get('risk_score'))
+            modified_risk_score = round(risk_score + random.uniform(-3, 3), 2)
+            json_body['risk_score'] = modified_risk_score
+            json_str = "```json\n" + json.dumps(json_body, ensure_ascii=False, indent=4) + "\n```"
+            modified_text = prompt_cot + '</think>\n\n' + json_str + '<｜end▁of▁sentence｜>'
+            return modified_text
+        modified_input_ids, modified_attention_masks,modified_position_ids,modified_responses = [],[],[],[]
+        for input_id_pad,attention_mask_pad,position_id_pad in zip(input_ids.tolist(),attention_masks.tolist(), position_ids.tolist()):
+            input_id = [input_id_pad[i] for i in range(len(input_id_pad)) if attention_mask_pad[i] == 1]
+            left_pad_len = attention_mask_pad.index(1)
+            max_len = len(input_id_pad)
+            response_len = responses.size(-1)
+            print(f'{max_len=},{self.tokenizer.pad_token_id=},{left_pad_len=},{response_len=}')
+            ori_text = self.tokenizer.decode(input_id, skip_special_tokens=False)
+            try:
+                modified_text = process_text(ori_text)
+            except Exception as e:
+                print(f'Error processing text: {e}. Using original text.')
+                modified_text = ori_text
+            modified_input_id = self.tokenizer.encode(modified_text, add_special_tokens=False)
+
+            modified_input_id_pad = [self.tokenizer.pad_token_id] * left_pad_len + modified_input_id + [self.tokenizer.pad_token_id] * (
+                        max_len - len(modified_input_id) - left_pad_len)
+            modified_attention_mask_pad = [0] * left_pad_len + [1] * len(modified_input_id) + [0] * (
+                        max_len - len(modified_input_id) - left_pad_len)
+            modified_position_id_pad = [0] * left_pad_len + list(range(0, max_len - left_pad_len))
+            modified_response_pad = modified_input_id_pad[-response_len:]
+
+            assert len(modified_input_id_pad) == len(modified_attention_mask_pad) == len(modified_position_id_pad) == max_len, f"Length mismatch after modification: {len(modified_input_id_pad)=}, {len(modified_attention_mask_pad)=}, {len(modified_position_id_pad)=} vs {max_len=}"
+            assert len(modified_response_pad) == response_len, f"Response length mismatch after modification: {len(modified_response_pad)=} vs {response_len=}"
+            modified_input_ids.append(modified_input_id_pad)
+            modified_attention_masks.append(modified_attention_mask_pad)
+            modified_position_ids.append(modified_position_id_pad)
+            modified_responses.append(modified_response_pad)
+
+        return (torch.tensor(modified_input_ids).to(input_ids.device),
+                torch.tensor(modified_attention_masks).to(attention_masks.device),
+                torch.tensor(modified_position_ids).to(position_ids.device),
+                torch.tensor(modified_responses).to(responses.device))
+
+
+
 
     def compute_kl_related_metrics(self, batch: DataProto, metrics: dict, timing_raw: dict):
         batch.batch["response_mask"] = compute_response_mask(batch)
@@ -165,7 +220,21 @@ class RayDAPOTrainer(RayPPOTrainer):
                     # generate a batch
                     with marked_timer("gen", timing_raw, "red"):
                         gen_batch_output = self.actor_rollout_wg.generate_sequences(gen_batch_output)
-                        print('aaaa,',gen_batch_output[0])
+
+                        tic = time.time()
+                        modified_input_ids, modified_attention_masks, modified_position_ids,modified_responses = self.modify_output(gen_batch_output.batch["input_ids"],gen_batch_output.batch["attention_mask"],gen_batch_output.batch["position_ids"],gen_batch_output.batch["responses"])
+                        gen_batch_output.batch["old_input_ids"] = gen_batch_output.batch["input_ids"]
+                        gen_batch_output.batch["old_attention_mask"] = gen_batch_output.batch["attention_mask"]
+                        gen_batch_output.batch["old_position_ids"] = gen_batch_output.batch["position_ids"]
+                        gen_batch_output.batch["old_responses"] = gen_batch_output.batch["responses"]
+
+                        gen_batch_output.batch["input_ids"] = modified_input_ids
+                        gen_batch_output.batch["attention_mask"] = modified_attention_masks
+                        gen_batch_output.batch["position_ids"] = modified_position_ids
+                        gen_batch_output.batch["responses"] = modified_responses
+                        print(f'done modifying outputs,using time:{time.time() - tic}...')
+                        print(gen_batch_output.batch)
+
                         timing_raw.update(gen_batch_output.meta_info["timing"])
                         gen_batch_output.meta_info.pop("timing", None)
 
