@@ -29,11 +29,11 @@ max_num_gen_batches=20
 train_prompt_bsz=256
 gen_prompt_bsz=256
 n_resp_per_prompt=16
-train_prompt_mini_bsz=64 #
-ppo_micro_batch_size_per_gpu=8
+train_prompt_mini_bsz=256 # if on_policy, set to train_prompt_bsz == train_prompt_mini_bsz
+ppo_micro_batch_size_per_gpu=16
 
 # Ray
-RAY_ADDRESS=${RAY_ADDRESS:-"http://192.168.192.234:8265"}
+RAY_ADDRESS=${RAY_ADDRESS:-"http://192.168.26.127:8265"}
 WORKING_DIR=${WORKING_DIR:-"${PWD}"}
 RUNTIME_ENV=${RUNTIME_ENV:-"/data/oceanus_share/boruipeng/github/verl_0.6.1/verl/verl/trainer/runtime_env.yaml"}
 NNODES=${NNODES:-4}
