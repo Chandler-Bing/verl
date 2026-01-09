@@ -29,8 +29,8 @@ max_num_gen_batches=20
 train_prompt_bsz=256
 gen_prompt_bsz=256
 n_resp_per_prompt=16
-train_prompt_mini_bsz=256 # if on_policy, set to train_prompt_bsz == train_prompt_mini_bsz
-ppo_micro_batch_size_per_gpu=16
+train_prompt_mini_bsz=256 # if u want on_policy mode, set to train_prompt_bsz == train_prompt_mini_bsz
+ppo_micro_batch_size_per_gpu=16 # batch size per gpu for ppo update
 
 # Ray
 RAY_ADDRESS=${RAY_ADDRESS:-"http://192.168.26.127:8265"}

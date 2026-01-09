@@ -68,6 +68,7 @@ class RayDAPOTrainer(RayPPOTrainer):
         modified_input_ids, modified_attention_masks,modified_position_ids,modified_responses = [],[],[],[]
         for input_id_pad,attention_mask_pad,position_id_pad in zip(input_ids.tolist(),attention_masks.tolist(), position_ids.tolist()):
             input_id = [input_id_pad[i] for i in range(len(input_id_pad)) if attention_mask_pad[i] == 1]
+            print(f'修改前:{len(input_id)=},{input_id[-10:]=}')
             left_pad_len = attention_mask_pad.index(1)
             max_len = len(input_id_pad)
             response_len = responses.size(-1)
@@ -75,10 +76,12 @@ class RayDAPOTrainer(RayPPOTrainer):
             ori_text = self.tokenizer.decode(input_id, skip_special_tokens=False)
             try:
                 modified_text = process_text(ori_text)
+                modified_input_id = self.tokenizer.encode(modified_text, add_special_tokens=False)
             except Exception as e:
                 print(f'Error processing text: {e}. Using original text.')
-                modified_text = ori_text
-            modified_input_id = self.tokenizer.encode(modified_text, add_special_tokens=False)
+                #modified_text = ori_text
+                modified_input_id = input_id
+            print(f'修改后:{len(modified_input_id)=},{modified_input_id[-10:]=}')
 
             modified_input_id_pad = [self.tokenizer.pad_token_id] * left_pad_len + modified_input_id + [self.tokenizer.pad_token_id] * (
                         max_len - len(modified_input_id) - left_pad_len)
@@ -221,6 +224,7 @@ class RayDAPOTrainer(RayPPOTrainer):
                     with marked_timer("gen", timing_raw, "red"):
                         gen_batch_output = self.actor_rollout_wg.generate_sequences(gen_batch_output)
 
+                        # === Modify outputs here===
                         tic = time.time()
                         modified_input_ids, modified_attention_masks, modified_position_ids,modified_responses = self.modify_output(gen_batch_output.batch["input_ids"],gen_batch_output.batch["attention_mask"],gen_batch_output.batch["position_ids"],gen_batch_output.batch["responses"])
                         gen_batch_output.batch["old_input_ids"] = gen_batch_output.batch["input_ids"]
