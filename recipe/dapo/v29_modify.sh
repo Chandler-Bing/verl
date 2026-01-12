@@ -2,7 +2,7 @@ set -x
 
 project_name='risk'
 exp_name='v29_modify'
-
+dtype='bfloat16'
 adv_estimator=grpo
 
 use_kl_in_reward=False
@@ -31,7 +31,7 @@ train_prompt_mini_bsz=256 ## if u want on_policy mode, set to train_prompt_bsz =
 ppo_micro_batch_size_per_gpu=32
 
 # Ray
-RAY_ADDRESS=${RAY_ADDRESS:-"http://192.168.26.127:8265"}
+RAY_ADDRESS=${RAY_ADDRESS:-"http://192.168.26.151:8265"}
 WORKING_DIR=${WORKING_DIR:-"${PWD}"}
 RUNTIME_ENV=${RUNTIME_ENV:-"/data/oceanus_share/boruipeng/github/verl_0.4.0/verl/verl/trainer/runtime_env.yaml"}
 NNODES=${NNODES:-4}
@@ -112,14 +112,17 @@ ray job submit --no-wait --address ${RAY_ADDRESS} --runtime-env="${RUNTIME_ENV}"
     actor_rollout_ref.rollout.enable_chunked_prefill=True \
     actor_rollout_ref.rollout.max_num_batched_tokens=$((max_prompt_length + max_response_length)) \
     actor_rollout_ref.rollout.temperature=${temperature} \
+    actor_rollout_ref.rollout.name=vllm \
     actor_rollout_ref.rollout.top_p=${top_p} \
     actor_rollout_ref.rollout.top_k="${top_k}" \
     actor_rollout_ref.rollout.val_kwargs.temperature=${temperature} \
     actor_rollout_ref.rollout.val_kwargs.top_p=${top_p} \
     actor_rollout_ref.rollout.val_kwargs.top_k=${top_k} \
+    actor_rollout_ref.rollout.dtype=${dtype} \
     actor_rollout_ref.rollout.val_kwargs.do_sample=True \
     actor_rollout_ref.rollout.val_kwargs.n=1 \
     actor_rollout_ref.ref.fsdp_config.param_offload=${offload} \
+    actor_rollout_ref.ref.fsdp_config.dtype=${dtype} \
     actor_rollout_ref.ref.ulysses_sequence_parallel_size=${sp_size} \
     actor_rollout_ref.actor.fsdp_config.fsdp_size=-1 \
     reward_model.reward_manager=dapo \
@@ -137,6 +140,4 @@ ray job submit --no-wait --address ${RAY_ADDRESS} --runtime-env="${RUNTIME_ENV}"
     trainer.total_epochs=1 \
     trainer.default_local_dir="${CKPTS_DIR}" \
     trainer.resume_mode=auto \
-    trainer.max_actor_ckpt_to_keep=10
-
-
+    trainer.max_actor_ckpt_to_keep=5
