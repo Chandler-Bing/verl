@@ -190,17 +190,20 @@ class DAPORewardManager(AbstractRewardManager):
             valid_response_length = data_item.batch["attention_mask"][prompt_length:].sum()
             valid_response_ids = response_ids[:valid_response_length]
 
-            old_response_ids = data_item.batch["old_responses"]
-            old_valid_response_length = data_item.batch["old_attention_mask"][prompt_length:].sum()
-            old_valid_response_ids = old_response_ids[:old_valid_response_length]
+            if not val:
+                old_response_ids = data_item.batch["old_responses"]
+                old_valid_response_length = data_item.batch["old_attention_mask"][prompt_length:].sum()
+                old_valid_response_ids = old_response_ids[:old_valid_response_length]
 
             # decode
             prompt_str = self.tokenizer.decode(valid_prompt_ids, skip_special_tokens=True)
             response_str = self.tokenizer.decode(valid_response_ids, skip_special_tokens=True)
-            old_response_str = self.tokenizer.decode(old_valid_response_ids, skip_special_tokens=True)
+            if not val:
+                old_response_str = self.tokenizer.decode(old_valid_response_ids, skip_special_tokens=True)
             prompts.append(prompt_str)
             responses.append(response_str)
-            old_responses.append(old_response_str)
+            if not val:
+                old_responses.append(old_response_str)
 
             eos_token = self.tokenizer.eos_token
             if response_str.endswith(eos_token):
